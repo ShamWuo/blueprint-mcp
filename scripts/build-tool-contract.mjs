@@ -16,17 +16,21 @@
  * `src/__tests__/contract.test.ts` fails when the checked-in JSON does not match
  * the contract, so a missed run is caught rather than shipped.
  */
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import * as nodeModule from "node:module";
-import { dirname, resolve } from "node:path";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
+const here = dirname(fileURLToPath(import.meta.url));
+const pkgRoot = resolve(here, "..");
+
 /**
- * Node strips the types but keeps the TypeScript resolution rules out of scope:
- * `src/contract.ts` imports `./tools` the way the rest of the repo does (no
- * extension), which Node's ESM resolver cannot find. Retry extensionless
- * relative specifiers with `.ts` instead of teaching every source file a
- * `.js` suffix purely for this one script's benefit.
+ * Node 22.6+ strips types but keeps TypeScript extensionless resolution out of
+ * scope: `src/contract.ts` imports `./tools` without an extension. Register a
+ * lightweight hook when available, and fall back to transpiling with the
+ * package's own `typescript` devDependency on Node 18/20 where `.ts` imports
+ * throw `ERR_UNKNOWN_FILE_EXTENSION`.
  */
 if (typeof nodeModule.registerHooks === "function") {
   nodeModule.registerHooks({
@@ -43,11 +47,53 @@ if (typeof nodeModule.registerHooks === "function") {
   });
 }
 
-const { MCP_ADVERTISED_TOOLS, MCP_PROTOCOL_VERSION, MCP_SERVER_INFO } = await import(
-  "../src/contract.ts"
-);
+async function loadContractModule() {
+  try {
+    return await import("../src/contract.ts");
+  } catch (err) {
+    const code = err && typeof err === "object" ? err.code : undefined;
+    if (code !== "ERR_UNKNOWN_FILE_EXTENSION" && code !== "ERR_MODULE_NOT_FOUND") {
+      throw err;
+    }
+    const tsMod = await import("typescript");
+    const ts = tsMod.default ?? tsMod;
+    const workDir = mkdtempSync(join(tmpdir(), "blueprint-tool-contract-"));
+    try {
+      const files = [
+        { src: "src/tools.ts", out: "tools.mjs", rewrites: [] },
+        {
+          src: "src/contract.ts",
+          out: "contract.mjs",
+          rewrites: [
+            ['from "./tools"', 'from "./tools.mjs"'],
+            ["from './tools'", "from './tools.mjs'"],
+          ],
+        },
+      ];
+      for (const file of files) {
+        const raw = readFileSync(join(pkgRoot, file.src), "utf8");
+        let output = ts.transpileModule(raw, {
+          fileName: file.src,
+          compilerOptions: {
+            target: ts.ScriptTarget.ES2022,
+            module: ts.ModuleKind.ESNext,
+          },
+        }).outputText;
+        for (const [from, to] of file.rewrites) {
+          output = output.split(from).join(to);
+        }
+        writeFileSync(join(workDir, file.out), output, "utf8");
+      }
+      return await import(pathToFileURL(join(workDir, "contract.mjs")).href);
+    } finally {
+      rmSync(workDir, { recursive: true, force: true });
+    }
+  }
+}
 
-const here = dirname(fileURLToPath(import.meta.url));
+const { MCP_ADVERTISED_TOOLS, MCP_PROTOCOL_VERSION, MCP_SERVER_INFO } =
+  await loadContractModule();
+
 export const TOOL_CONTRACT_PATH = resolve(here, "../bin/tool-contract.json");
 
 /** The exact payload the bundle reads, and the exact payload the tests expect. */
