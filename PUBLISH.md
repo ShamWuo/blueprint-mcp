@@ -57,12 +57,11 @@ MCP_REGISTRY_TOKEN=... node scripts/publish-registry.mjs
 
 Alternatively submit `server.json` manually via the registry's web UI / GitHub PR.
 
-## 3. Anthropic Desktop Extension (.dxt) — one-click Claude install
+## 3. Anthropic Desktop Extension (.mcpb) — one-click Claude install
 
 ```bash
 cd packages/mcp-server
-npm install -D @anthropic-ai/dxt   # once
-npm run pack:dxt                   # produces blueprint-nexus-mcp-server-0.1.0.mcpb
+npm run pack:mcpb                  # produces a .mcpb bundle via @anthropic-ai/mcpb
 ```
 
 Distribute the `.mcpb` from GitHub Releases (or attach it to the repo). Claude Desktop users double-click to install; the API key is prompted at install time (`manifest.json` user_config).

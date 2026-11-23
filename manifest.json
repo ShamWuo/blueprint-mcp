@@ -10,7 +10,7 @@
   },
   "server": {
     "type": "node",
-    "entrypoint": "bin/blueprint-nexus-mcp.js",
+    "entry_point": "bin/blueprint-nexus-mcp.js",
     "mcp_config": {
       "command": "node",
       "args": ["${__dirname}/bin/blueprint-nexus-mcp.js", "--key", "${user_config.api_key}"],

@@ -1,0 +1,73 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag (e.g. v0.1.0)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    name: Build, Publish npm & Attach .mcpb
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Run full verification
+        env:
+          MCP_VERIFY_SKIP_NETWORK: "1"
+        run: |
+          npm run typecheck
+          npm test
+          npm run build
+          npm run verify:pack
+          node scripts/validate-server-json.mjs
+
+      - name: Publish to npm (when NPM_TOKEN is configured)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [[ -n "$NODE_AUTH_TOKEN" ]]; then
+            npm publish --provenance --access public
+          else
+            echo "::notice::NPM_TOKEN secret is not set — skipping npm publish."
+          fi
+
+      - name: Build .mcpb bundle and npm tarball
+        run: |
+          npm pack
+          npm prune --omit=dev
+          npx -y @anthropic-ai/mcpb pack . blueprint-nexus-mcp-server.mcpb
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          TARBALL="$(ls -1 *.tgz | head -1)"
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "$TARBALL" blueprint-nexus-mcp-server.mcpb --clobber
+          else
+            gh release create "$RELEASE_TAG" "$TARBALL" blueprint-nexus-mcp-server.mcpb \
+              --title "@blueprint-nexus/mcp-server $RELEASE_TAG" \
+              --generate-notes
+          fi
