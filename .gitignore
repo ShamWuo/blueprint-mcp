@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.turbo/
+coverage/
+.env
+.env.*
+*.tgz
+*.mcpb
+.DS_Store

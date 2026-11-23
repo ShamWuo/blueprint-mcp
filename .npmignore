@@ -1,0 +1,11 @@
+# Published via "files" whitelist in package.json; this guards against accidents.
+src/__tests__/
+scripts/
+tsconfig.json
+tsconfig.build.json
+vitest.config.ts
+manifest.json
+.npmignore
+.gitignore
+.github/
+*.mcpb

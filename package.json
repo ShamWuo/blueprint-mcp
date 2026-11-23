@@ -1,0 +1,81 @@
+{
+  "name": "@blueprint-nexus/mcp-server",
+  "version": "0.1.0",
+  "description": "Persistent architectural memory, codebase sync, and invariant verification for AI coding agents (Cursor, Claude Code, Antigravity) via MCP.",
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "knowledge-graph",
+    "second-brain",
+    "ai",
+    "agent",
+    "blueprint-nexus",
+    "bluesc"
+  ],
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "blueprint-nexus-mcp": "./bin/blueprint-nexus-mcp.js",
+    "blueprint-cli": "./bin/blueprint-cli.js",
+    "mcp-server": "./bin/blueprint-nexus-mcp.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "README.md",
+    "LICENSE",
+    "server.json"
+  ],
+  "mcpName": "org.bluesc/blueprint-nexus-mcp",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShamWuo/blueprint-mcp.git"
+  },
+  "homepage": "https://www.bluesc.org",
+  "bugs": {
+    "url": "https://github.com/ShamWuo/blueprint-mcp/issues"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "build:tool-contract": "node ./scripts/build-tool-contract.mjs",
+    "prepack": "npm run generate:local-store && npm run build:tool-contract && npm run build",
+    "start": "node ./bin/blueprint-nexus-mcp.js",
+    "mcp:serve": "node ./bin/blueprint-nexus-mcp.js",
+    "cli": "node ./bin/blueprint-cli.js",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "pack:dxt": "npm pack && npx @anthropic-ai/dxt pack",
+    "verify:pack": "bash ./scripts/verify-tarball.sh",
+    "publish:npm": "npm publish --access public",
+    "publish:registry": "node ./scripts/publish-registry.mjs",
+    "generate:local-store": "node ./scripts/generate-local-store.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.1",
+    "@supabase/supabase-js": "^2.106.2",
+    "dotenv": "^16.4.5",
+    "yaml": "^2.9.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.0",
+    "ajv": "^6.15.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.6"
+  }
+}
